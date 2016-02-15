@@ -92,6 +92,24 @@ export default class EmailTemplate {
     .nodeify(callback)
   }
 
+  renderTemplate (callback) {
+    debug('Rendering template')
+    return this._init()
+    .then(this._renderStyle())
+    .then((style) => {
+      let html = this.files.html
+      if (!html) return null
+      let template = this.files.html.content
+      if (!style) return template
+      if (this.options.juiceOptions) {
+        debug('Using juice options ', this.options.juiceOptions)
+      }
+      return juice.inlineContent(template, style, this.options.juiceOptions || {})
+    })
+    .tap(() => debug('Finished rendering template'))
+    .nodeify(callback)
+  }
+
   render (locals, callback) {
     if (isFunction(locals)) {
       callback = locals
@@ -101,12 +119,13 @@ export default class EmailTemplate {
 
     return P.all([
       this.renderHtml(locals),
-      this.renderText(locals)
+      this.renderText(locals),
+      this.renderTemplate()
     ])
     .then((rendered) => {
-      let [html, text] = rendered
+      let [html, text, template] = rendered
       return {
-        html, text
+        html, text, template
       }
     })
     .nodeify(callback)
